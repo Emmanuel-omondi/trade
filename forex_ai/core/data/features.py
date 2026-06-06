@@ -236,6 +236,8 @@ class FeatureExtractor:
             return features
     
     def normalize_features(self, features):
+        normalized = {}
+        
         if not features:
             if _NATIVE_AVAILABLE:
                 try:
@@ -245,51 +247,44 @@ class FeatureExtractor:
             else:
                 native = None
 
-            features = {}
             if native is not None:
-                features['rsi_14'] = native.get('rsi_14', np.nan)
-                features['rsi_7'] = native.get('rsi_7', np.nan)
-                features['macd'] = native.get('macd', np.nan)
-                features['macd_signal'] = native.get('macd_histogram', np.nan)
-                features['macd_histogram'] = native.get('macd_histogram', np.nan)
-                features['atr_14'] = native.get('atr_14', np.nan)
-                features['atr_20'] = native.get('atr_20', np.nan)
-                features['bb_upper'] = native.get('bb_upper', np.nan)
-                features['bb_middle'] = native.get('bb_middle', np.nan)
-                features['bb_lower'] = native.get('bb_lower', np.nan)
-                features['stoch_k'] = np.nan
-                features['stoch_d'] = np.nan
-                features['cci'] = np.nan
-                features['adx'] = np.nan
-                features['obv'] = native.get('obv', np.nan)
+                normalized.update({
+                    'rsi_14': native.get('rsi_14', 0),
+                    'rsi_7': native.get('rsi_7', 0),
+                    'macd': native.get('macd', 0),
+                    'macd_histogram': native.get('macd_histogram', 0),
+                    'atr_14': native.get('atr_14', 0),
+                    'atr_20': native.get('atr_20', 0),
+                    'bb_upper': native.get('bb_upper', 0),
+                    'bb_middle': native.get('bb_middle', 0),
+                    'bb_lower': native.get('bb_lower', 0),
+                    'obv': native.get('obv', 0),
+                    'stoch_k': 0, 'stoch_d': 0, 'cci': 0, 'adx': 0
+                })
             else:
-                features['rsi_14'] = RSI.compute(closes, 14)
-                features['rsi_7'] = RSI.compute(closes, 7)
-                macd, signal, hist = MACD.compute(closes)
-                features['macd'] = macd
-                features['macd_signal'] = signal
-                features['macd_histogram'] = hist
-                features['atr_14'] = ATR.compute(highs, lows, closes, 14)
-                features['atr_20'] = ATR.compute(highs, lows, closes, 20)
-                upper, mid, lower = Bollinger.compute(closes, 20, 2)
-                features['bb_upper'] = upper
-                features['bb_middle'] = mid
-                features['bb_lower'] = lower
-                k, d = Stochastic.compute(highs, lows, closes, 14, 3)
-                features['stoch_k'] = k
-                features['stoch_d'] = d
-                features['cci'] = CCI.compute(highs, lows, closes, 20)
-                features['adx'] = ADX.compute(highs, lows, closes, 14)
-                features['obv'] = OBV.compute(closes, volumes)
+                normalized = {key: 0 for key in ['rsi_14', 'rsi_7', 'macd', 'macd_histogram', 
+                                               'atr_14', 'atr_20', 'bb_upper', 'bb_middle', 
+                                               'bb_lower', 'stoch_k', 'stoch_d', 'cci', 'adx', 'obv']}
+        
         else:
-            normalized['ma_trend'] = 0
-        
+            normalized['rsi_14'] = features.get('rsi_14', 50) / 100
+            normalized['macd'] = features.get('macd', 0) / 10
+            normalized['macd_histogram'] = features.get('macd_histogram', 0) / 10
+            normalized['stoch_k'] = features.get('stoch_k', 50) / 100
+            normalized['cci'] = features.get('cci', 0) / 200
+            normalized['adx'] = features.get('adx', 0) / 100
+            normalized['direction'] = features.get('direction', 0)
+            normalized['volatility'] = min(features.get('volatility', 0) / 100, 1.0)
+            normalized['returns'] = features.get('returns', 0)
+            
+            price = features.get('price', 1)
+            bb_pos = (price - features.get('bb_lower', 0)) / (features.get('bb_upper', 1) - features.get('bb_lower', 1) + 1e-6)
+            normalized['bb_position'] = np.clip(bb_pos, 0, 1)
+            normalized['ma_trend'] = 1 if features.get('ma_20', 0) > features.get('ma_50', 0) else -1
+            
         return normalized
-    
+
     def get_state_vector(self, features, history_len=10):
-        if not features:
-            return np.zeros(11 * history_len)
-        
         normalized = self.normalize_features(features)
         
         state_keys = [

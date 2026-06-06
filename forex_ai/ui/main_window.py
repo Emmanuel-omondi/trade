@@ -1,204 +1,190 @@
-from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QTabWidget, QPushButton, QVBoxLayout, QHBoxLayout, QLabel, QSizePolicy, QToolBar, QStyle
-from PyQt6.QtGui import QIcon, QAction
-from PyQt6.QtCore import QTimer, pyqtSignal
 import threading
+from PyQt6.QtWidgets import (QMainWindow, QWidget, QTabWidget, QPushButton,
+                              QVBoxLayout, QHBoxLayout, QLabel, QSizePolicy, QFrame)
+from PyQt6.QtCore import QTimer, pyqtSignal, Qt
 from ui.dashboard import DashboardWidget
 from ui.config_panel import ConfigPanel
 from ui.brain_monitor import BrainMonitorWidget
 from ui.trade_log import TradeLogWidget
 
+
 class MainWindow(QMainWindow):
     connectResult = pyqtSignal(bool)
+    logSignal = pyqtSignal(str, str)
 
     def __init__(self, orchestrator):
         super().__init__()
         self.orchestrator = orchestrator
-        self.setWindowTitle('Skelter Trader Agent')
-        self.setMinimumSize(900, 700)
-        self.container = QWidget()
-        self.container.setObjectName('containerWidget')
-        self.layout = QVBoxLayout(self.container)
-        self.setCentralWidget(self.container)
-        toolbar = QToolBar()
-        icon_folder = 'assets/'
-        style = QApplication.style()
-        start_icon = style.standardIcon(QStyle.StandardPixmap.SP_MediaPlay)
-        stop_icon = style.standardIcon(QStyle.StandardPixmap.SP_MediaStop)
-        self.start_action = QAction(start_icon, 'Start', self)
-        self.stop_action = QAction(stop_icon, 'Stop', self)
-        self.stop_action.setEnabled(False)
-        toolbar.addAction(self.start_action)
-        toolbar.addAction(self.stop_action)
-        # assign object names to the generated toolbuttons for styling
-        self.start_btn_widget = toolbar.widgetForAction(self.start_action)
-        if self.start_btn_widget is not None:
-            self.start_btn_widget.setObjectName('startButton')
-        self.stop_btn_widget = toolbar.widgetForAction(self.stop_action)
-        if self.stop_btn_widget is not None:
-            self.stop_btn_widget.setObjectName('stopButton')
+        self.orchestrator.add_log_callback(self._on_log)
+        self.setWindowTitle('Skelter Forex AI')
+        self.setMinimumSize(1100, 720)
+        self.resize(1280, 820)
 
-        # connection indicator and status
-        self.conn_indicator = QLabel('\u25CF')
-        self.conn_indicator.setObjectName('connIndicator')
-        self.status_label = QLabel('Status: stopped')
-        self.status_label.setObjectName('statusLabel')
-        self.balance_label = QLabel('Balance: 0.00')
-        self.balance_label.setObjectName('balanceLabel')
-        # ensure readable defaults regardless of stylesheet
-        self.conn_indicator.setStyleSheet('color: #e74c3c; font-weight:700;')
-        self.status_label.setStyleSheet('color: #ffffff; background: transparent; font-weight:700;')
-        self.balance_label.setStyleSheet('color: #111111; background: #ffffff; padding:4px; border-radius:6px; font-weight:700;')
-        toolbar.addWidget(self.conn_indicator)
-        toolbar.addWidget(self.status_label)
-        toolbar.addWidget(self.balance_label)
-        self.layout.addWidget(toolbar)
+        root = QWidget()
+        root.setObjectName('rootWidget')
+        root_layout = QVBoxLayout(root)
+        root_layout.setContentsMargins(0, 0, 0, 0)
+        root_layout.setSpacing(0)
+        self.setCentralWidget(root)
+
+        top_bar = self._build_top_bar()
+        root_layout.addWidget(top_bar)
+
         self.tabs = QTabWidget()
+        self.tabs.setDocumentMode(True)
         self.dashboard = DashboardWidget(orchestrator)
         self.brain_monitor = BrainMonitorWidget(orchestrator)
         self.config_panel = ConfigPanel(orchestrator)
         self.trade_log = TradeLogWidget(orchestrator)
-        self.tabs.addTab(self.dashboard, 'Dashboard')
-        self.tabs.addTab(self.brain_monitor, 'Brain Monitor')
-        self.tabs.addTab(self.trade_log, 'Trade Log')
-        self.tabs.addTab(self.config_panel, 'Config')
-        self.layout.addWidget(self.tabs)
-        self.start_action.triggered.connect(self.start_system)
-        self.stop_action.triggered.connect(self.stop_system)
+        self.tabs.addTab(self.dashboard, '  Dashboard  ')
+        self.tabs.addTab(self.brain_monitor, '  AI Brain  ')
+        self.tabs.addTab(self.trade_log, '  Trade Log  ')
+        self.tabs.addTab(self.config_panel, '  Config  ')
+        root_layout.addWidget(self.tabs)
+
         self.connectResult.connect(self._on_connect_result)
+        self.logSignal.connect(self._dispatch_log)
+
         self.timer = QTimer(self)
-        self.timer.setInterval(1500)
-        self.timer.timeout.connect(self.tick)
+        self.timer.setInterval(1000)
+        self.timer.timeout.connect(self._tick)
         self.timer.start()
 
-    def start_system(self):
-        # run connect on a background thread to avoid blocking the UI
-        self.status_label.setText('Status: connecting...')
-        self.start_action.setEnabled(False)
-        self.stop_action.setEnabled(False)
-        self.conn_indicator.setStyleSheet('color: #f1c40f;')  # yellow during connect
+    def _build_top_bar(self):
+        bar = QWidget()
+        bar.setObjectName('topBar')
+        bar.setFixedHeight(52)
+        layout = QHBoxLayout(bar)
+        layout.setContentsMargins(16, 0, 16, 0)
+        layout.setSpacing(12)
+
+        title = QLabel('⬡ SKELTER AI')
+        title.setObjectName('appTitle')
+        layout.addWidget(title)
+
+        sep = QFrame()
+        sep.setFrameShape(QFrame.Shape.VLine)
+        sep.setStyleSheet('color: #21262d;')
+        layout.addWidget(sep)
+
+        self.conn_dot = QLabel('●')
+        self.conn_dot.setObjectName('connDot')
+        self.conn_dot.setStyleSheet('color: #da3633;')
+        self.conn_dot.setToolTip('Disconnected')
+        layout.addWidget(self.conn_dot)
+
+        self.status_chip = QLabel('STOPPED')
+        self.status_chip.setObjectName('statusChip')
+        layout.addWidget(self.status_chip)
+
+        layout.addStretch()
+
+        self.balance_chip = QLabel('Balance: ---')
+        self.balance_chip.setObjectName('balanceChip')
+        layout.addWidget(self.balance_chip)
+
+        self.equity_chip = QLabel('Equity: ---')
+        self.equity_chip.setObjectName('equityChip')
+        layout.addWidget(self.equity_chip)
+
+        self.pnl_chip = QLabel('P&L: ---')
+        self.pnl_chip.setObjectName('pnlChip')
+        self.pnl_chip.setStyleSheet('background:#21262d; color:#8b949e; border-radius:10px; padding:3px 12px; font-size:13px; font-weight:700;')
+        layout.addWidget(self.pnl_chip)
+
+        layout.addStretch()
+
+        self.btn_start = QPushButton('▶  START')
+        self.btn_start.setObjectName('btnStart')
+        self.btn_start.setFixedHeight(34)
+        self.btn_start.clicked.connect(self._start_system)
+        layout.addWidget(self.btn_start)
+
+        self.btn_stop = QPushButton('■  STOP')
+        self.btn_stop.setObjectName('btnStop')
+        self.btn_stop.setFixedHeight(34)
+        self.btn_stop.setEnabled(False)
+        self.btn_stop.clicked.connect(self._stop_system)
+        layout.addWidget(self.btn_stop)
+
+        return bar
+
+    def _start_system(self):
+        self.status_chip.setText('CONNECTING...')
+        self.btn_start.setEnabled(False)
+        self.btn_stop.setEnabled(False)
+        self.conn_dot.setStyleSheet('color: #d29922;')
 
         def worker():
             ok = False
             try:
-                print('[UI worker] Starting connect...', flush=True)
-                import sys
-                sys.stdout.flush()
                 ok = self.orchestrator.connect()
-                print(f'[UI worker] Connect returned {ok}', flush=True)
-                sys.stdout.flush()
             except Exception as e:
-                print(f'[UI worker] Connect exception: {e}', flush=True)
-                import sys
-                sys.stdout.flush()
-                ok = False
-            # schedule UI update back on the main thread
-            print('[UI worker] Scheduling callback...', flush=True)
-            import sys
-            sys.stdout.flush()
+                pass
             self.connectResult.emit(ok)
-            print('[UI worker] Callback scheduled, thread exiting...', flush=True)
-            sys.stdout.flush()
 
-        # start thread with daemon mode
-        thread = threading.Thread(target=worker, daemon=True)
-        thread.start()
-        # schedule a watchdog UI update if connection takes long
-        QTimer.singleShot(30000, lambda: self._on_connect_watchdog())
+        threading.Thread(target=worker, daemon=True).start()
 
-    def stop_system(self):
+    def _stop_system(self):
         self.orchestrator.stop()
         self.orchestrator.disconnect()
+        self.btn_start.setEnabled(True)
+        self.btn_stop.setEnabled(False)
+        self.status_chip.setText('STOPPED')
+        self.status_chip.setStyleSheet('')
+        self.conn_dot.setStyleSheet('color: #da3633;')
         self.config_panel.setEnabled(True)
-        self.start_action.setEnabled(True)
-        self.stop_action.setEnabled(False)
-        self.status_label.setText('Status: stopped')
 
     def _on_connect_result(self, success: bool):
-        import sys
-        print(f'[UI] _on_connect_result called with success={success}', flush=True)
-        sys.stdout.flush()
         if not success:
-            err = getattr(self.orchestrator, 'last_error', None)
-            msg = 'connection failed' if not err else f'connection failed: {err}'
-            self.status_label.setText(f'Status: {msg}')
-            self.status_label.setToolTip(str(err or ''))
-            self.start_action.setEnabled(True)
-            self.stop_action.setEnabled(False)
-            self.conn_indicator.setStyleSheet('color: #e74c3c;')
-            print(f'[UI] Connect failed: {err}', flush=True)
-            sys.stdout.flush()
+            err = getattr(self.orchestrator, 'last_error', 'Unknown error')
+            self.status_chip.setText('FAILED')
+            self.status_chip.setStyleSheet('background:#3d1a1a; color:#f85149;')
+            self.conn_dot.setStyleSheet('color: #da3633;')
+            self.btn_start.setEnabled(True)
             return
 
-        # connected successfully
-        print('[UI] Connected successfully', flush=True)
-        sys.stdout.flush()
         self.config_panel.setEnabled(False)
         self.orchestrator.start()
-        self.status_label.setText('Status: running')
-        self.status_label.setToolTip('')
-        self.start_action.setEnabled(False)
-        self.stop_action.setEnabled(True)
-        self.conn_indicator.setStyleSheet('color: #2ecc71;')
-        # schedule state update on main thread after UI updates settle
-        QTimer.singleShot(100, self._refresh_ui_state_after_connect)
+        self.status_chip.setText('RUNNING')
+        self.status_chip.setStyleSheet('background:#1a3d28; color:#3fb950;')
+        self.conn_dot.setStyleSheet('color: #3fb950;')
+        self.btn_start.setEnabled(False)
+        self.btn_stop.setEnabled(True)
 
-    def _refresh_ui_state_after_connect(self):
-        """Refresh UI state after a successful connect, without blocking the main thread."""
-        import sys
-        print('[UI] _refresh_ui_state_after_connect starting...', flush=True)
-        sys.stdout.flush()
-        try:
-            self.orchestrator._update_status()
-            print('[UI] _update_status() completed', flush=True)
-            sys.stdout.flush()
-            state = self.orchestrator.get_state()
-            print(f'[UI] State after update: {state}', flush=True)
-            sys.stdout.flush()
-            self.tick()
-            print('[UI] tick() completed', flush=True)
-            sys.stdout.flush()
-        except Exception as e:
-            import traceback
-            print(f'[UI] _refresh_ui_state_after_connect failed: {e}', flush=True)
-            traceback.print_exc()
-            sys.stdout.flush()
+    def _on_log(self, level, message):
+        self.logSignal.emit(level, message)
 
-    def _on_connect_watchdog(self):
-        # if still not connected after a delay, show a warning and set indicator to yellow
-        if getattr(self.orchestrator, 'is_connected', False):
-            return
-        st = self.status_label.text()
-        if 'connecting' in st.lower():
-            self.status_label.setText('Status: connecting (taking longer than expected)')
-            self.status_label.setToolTip('Connection is taking longer than expected; please check the MT5 terminal')
-            self.conn_indicator.setStyleSheet('color: #f1c40f;')
+    def _dispatch_log(self, level, message):
+        self.dashboard.append_log(level, message)
 
-    def tick(self):
-        import sys
+    def _tick(self):
         state = self.orchestrator.get_state()
-        if not state and getattr(self.orchestrator, 'is_connected', False):
-            try:
-                self.orchestrator._update_status()
-                state = self.orchestrator.get_state()
-                print('[UI tick] Refreshed state after finding it empty', flush=True)
-                sys.stdout.flush()
-            except Exception:
-                state = {}
-
         account = state.get('account', {})
-        balance = account.get('account_balance', 0)
-        print(f'[UI tick] balance={balance}, account={account}', flush=True)
-        sys.stdout.flush()
-        self.balance_label.setText(f'Balance: {balance:.2f}')
+
+        balance = account.get('account_balance', 0.0)
+        equity = account.get('total_equity', 0.0)
+        open_pnl = account.get('open_pnl', 0.0)
+
+        self.balance_chip.setText(f'Balance: {balance:,.2f}')
+        self.equity_chip.setText(f'Equity: {equity:,.2f}')
+
+        pnl_color = '#3fb950' if open_pnl >= 0 else '#f85149'
+        sign = '+' if open_pnl >= 0 else ''
+        self.pnl_chip.setText(f'P&L: {sign}{open_pnl:,.2f}')
+        self.pnl_chip.setStyleSheet(f'background:#21262d; color:{pnl_color}; border-radius:10px; padding:3px 12px; font-size:13px; font-weight:700;')
+
+        is_conn = getattr(self.orchestrator, 'is_connected', False)
         st = state.get('status', 'stopped')
-        self.status_label.setText(f"Status: {st}")
-        # update connection indicator color
-        if getattr(self.orchestrator, 'is_connected', False):
-            self.conn_indicator.setStyleSheet('color: #2ecc71;')
+        if is_conn and st == 'running':
+            self.conn_dot.setStyleSheet('color: #3fb950;')
+            self.status_chip.setText('RUNNING')
+            self.status_chip.setStyleSheet('background:#1a3d28; color:#3fb950; border-radius:10px; padding:3px 10px; font-size:12px; font-weight:600;')
         elif st == 'reconnecting':
-            self.conn_indicator.setStyleSheet('color: #f1c40f;')
-        else:
-            self.conn_indicator.setStyleSheet('color: #e74c3c;')
-        self.dashboard.update_state()
+            self.conn_dot.setStyleSheet('color: #d29922;')
+            self.status_chip.setText('RECONNECTING')
+            self.status_chip.setStyleSheet('background:#3d2f0a; color:#d29922; border-radius:10px; padding:3px 10px; font-size:12px; font-weight:600;')
+
+        self.dashboard.update_state(state)
         self.brain_monitor.update_state()
         self.trade_log.update_state()
