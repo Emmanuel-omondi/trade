@@ -1,0 +1,113 @@
+/* Modern white/black theme */
+* {
+	font-family: "Segoe UI", Roboto, Arial, sans-serif;
+}
+QWidget {
+	background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #ffffff, stop:1 #f3f3f3);
+	color: #0b0b0b;
+}
+QMainWindow {
+	background: transparent;
+}
+QToolBar {
+	background: #111111;
+	spacing: 8px;
+	padding: 8px;
+	border-radius: 8px;
+}
+QToolButton, QPushButton {
+	background: transparent;
+	color: #ffffff;
+	border: 0;
+	padding: 6px 10px;
+	margin: 0;
+}
+QToolButton:hover, QPushButton:hover {
+	background: rgba(255,255,255,0.08);
+	border-radius: 6px;
+}
+QLabel#statusLabel {
+	color: #ffffff;
+	font-weight: 700;
+	background: transparent;
+	padding-left: 8px;
+}
+QTabWidget::pane {
+	border: 0;
+	background: transparent;
+}
+QTabBar::tab {
+	background: rgba(0,0,0,0.06);
+	color: #0b0b0b;
+	padding: 10px 14px;
+	border-radius: 8px;
+	min-width: 120px;
+}
+QTabBar::tab:selected {
+	background: #111111;
+	color: #ffffff;
+}
+QTableWidget {
+	background: #ffffff;
+	alternate-background-color: #f9f9f9;
+	gridline-color: #e6e6e6;
+	selection-background-color: #111111;
+	selection-color: #ffffff;
+}
+QHeaderView::section {
+	background: #fafafa;
+	padding: 6px;
+	border: none;
+	color: #111111;
+	font-weight: 600;
+}
+QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox {
+	background: #ffffff;
+	border: 1px solid #e0e0e0;
+	padding: 6px;
+	border-radius: 6px;
+}
+QPushButton#saveButton {
+	background: #111111;
+	color: #ffffff;
+	padding: 8px 12px;
+	border-radius: 8px;
+}
+QPushButton#saveButton:hover {
+	background: #333333;
+}
+/* subtle shadow around main container */
+QWidget#containerWidget {
+	border-radius: 12px;
+	padding: 12px;
+	background: rgba(255,255,255,0.9);
+	border: 1px solid rgba(0,0,0,0.04);
+}
+
+QToolButton#startButton {
+	background: #2ecc71;
+	color: #ffffff;
+	border-radius: 8px;
+	padding: 6px 10px;
+}
+QToolButton#startButton:hover { background: #27ae60; }
+
+QToolButton#stopButton {
+	background: #e74c3c;
+	color: #ffffff;
+	border-radius: 8px;
+	padding: 6px 10px;
+}
+QToolButton#stopButton:hover { background: #c0392b; }
+
+QLabel#balanceLabel {
+	background: #ffffff;
+	color: #111111;
+	padding: 6px 10px;
+	border-radius: 8px;
+	font-weight: 700;
+}
+
+QLabel#connIndicator {
+	font-weight: 900;
+}
