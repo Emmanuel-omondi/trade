@@ -32,16 +32,3 @@ pip install -r requirements.txt
 python main.py
 ```
 
-Notes
-
-- The app will prefer a native compiled feature engine if available; otherwise it uses the Python fallback.
-- For FXPro/FXPesa you must provide a REST endpoint matching the simple API paths used by `core/data/brokers.GenericRESTBridge` (e.g. `/candles`, `/tick`, `/order`, `/positions`). If your broker provides a different API, adapt `core/data/brokers.py` accordingly.
- - If you want an installer for Windows, use the provided `build_installer.bat` which runs PyInstaller to produce a single-file executable. Provide an `assets\app.ico` if you want a custom icon. Example:
-
-```powershell
-pip install pyinstaller
-.\build_installer.bat
-```
-
- - I checked FxPro and FXPesa websites and did not find a publicly documented REST trading API; FxPro exposes MT5/cTrader. I recommend using the `mt5` broker in `config/settings.json` or switching to a broker with a public REST API such as OANDA if you prefer REST.
-
