@@ -1,6 +1,0 @@
-numpy
-scipy
-PyQt6
-requests
-scikit-learn
-MetaTrader5
