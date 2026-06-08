@@ -1,0 +1,14 @@
+{
+  "mt5_login": null,
+  "mt5_password": null,
+  "mt5_server": null,
+  "trade_symbols": ["EURUSD", "GBPUSD", "USDJPY"],
+  "timeframe": 5,
+  "poll_interval_seconds": 2,
+  "account_balance": 10000,
+  "risk_per_trade": 0.02,
+  "max_daily_loss": 0.05,
+  "num_experts": 20,
+  "esn_hidden": 120,
+  "database_path": "db/forex_ai.db"
+}
